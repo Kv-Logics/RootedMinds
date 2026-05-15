@@ -112,7 +112,10 @@ export default function DashboardPage() {
           loading: true,
           resolved: false,
         };
-        setIncidents((prev) => [newInc, ...prev]);
+        setIncidents((prev) => {
+          const filtered = prev.filter((inc) => inc.id !== event.incident_id);
+          return [newInc, ...filtered];
+        });
         setActiveTab("incidents");
 
         // Fetch context in background

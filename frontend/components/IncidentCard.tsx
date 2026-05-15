@@ -15,9 +15,9 @@ export function IncidentCard({ incidentId, trigger, context, onResolved }: Props
   const [prUrl, setPrUrl] = useState<string | null>(null);
   const [prError, setPrError] = useState<string | null>(null);
 
-  const topMatch   = context.similar_past_incidents[0];
-  const topRemed   = context.suggested_remediations[0];
-  const topChain   = context.causal_chain.slice(0, 3);
+  const topMatch   = context.similar_past_incidents?.[0];
+  const topRemed   = context.suggested_remediations?.[0];
+  const topChain   = context.causal_chain?.slice(0, 3) ?? [];
   const hasGhost   = topMatch?.rationale?.includes("Ghost Protocol");
   const serviceName = trigger.includes(":") ? trigger.split(":")[1]?.split("/")?.[0] ?? "service" : "service";
 
@@ -58,7 +58,7 @@ export function IncidentCard({ incidentId, trigger, context, onResolved }: Props
 
       <div className="p-5 space-y-5">
         {/* Causal Chain */}
-        {topChain.length > 0 && (
+        {topChain && topChain.length > 0 && (
           <div>
             <p className="text-[10px] uppercase tracking-widest text-gray-600 mb-2 font-semibold">Causal Chain</p>
             <div className="flex items-center gap-1 flex-wrap">

@@ -52,7 +52,7 @@ npm run dev
 
 | Service  | URL                            |
 |----------|--------------------------------|
-| Frontend | http://localhost:3000          |
+| Frontend | http://localhost:3001          |
 | Backend  | http://localhost:8000          |
 | API Docs | http://localhost:8000/docs     |
 | ReDoc    | http://localhost:8000/redoc    |

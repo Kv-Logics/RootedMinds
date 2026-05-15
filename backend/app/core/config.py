@@ -16,14 +16,22 @@ class Settings(BaseSettings):
     database_url: str = "sqlite+aiosqlite:///./app.db"
 
     # CORS
-    frontend_url: str = "http://localhost:3000"
+    frontend_url: str = "http://localhost:3001"
 
     # Auth
     secret_key: str = "change-this-in-production"
+    
+    # GitHub PR
+    github_token: str = ""
+    github_repo: str = ""
+    
+    # Environment
+    environment: str = "development"
 
     class Config:
         env_file = ".env"
         case_sensitive = False
+        extra = "ignore"
 
 
 @lru_cache()

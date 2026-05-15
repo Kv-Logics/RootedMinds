@@ -11,9 +11,9 @@ This is what the dashboard "Create PR" button calls.
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
-from ..services.github_pr import GitHubPRService
+from app.services.github_pr import GitHubPRService
 
-router = APIRouter(prefix="/api/v1/pr")
+router = APIRouter(prefix="/pr")
 
 # Shared service instance (reads GITHUB_TOKEN + GITHUB_REPO from env)
 _pr_service = GitHubPRService()
@@ -42,7 +42,7 @@ async def create_pr(payload: PRRequest):
     # Allow per-request repo override (useful for demo with different targets)
     service = _pr_service
     if payload.repo:
-        from ..services.github_pr import GitHubPRService
+        from app.services.github_pr import GitHubPRService
         service = GitHubPRService(repo=payload.repo)
 
     result = service.create_fix_pr(
@@ -68,9 +68,10 @@ async def create_pr(payload: PRRequest):
 @router.get("/status")
 async def pr_service_status():
     """Check if GitHub credentials are configured."""
-    import os
-    token_set = bool(os.getenv("GITHUB_TOKEN"))
-    repo_set  = bool(os.getenv("GITHUB_REPO"))
+    from app.core.config import get_settings
+    settings = get_settings()
+    token_set = bool(settings.github_token)
+    repo_set  = bool(settings.github_repo)
     return {
         "github_token_configured": token_set,
         "github_repo_configured": repo_set,

@@ -108,9 +108,9 @@ class ReconstructService:
 
         return {
             "related_events":         [],   # filled by ingest layer
-            "causal_chain":           [e.dict() for e in causal_chain],
-            "similar_past_incidents": [m.dict() for m in similar_past],
-            "suggested_remediations": [r.dict() for r in remediations],
+            "causal_chain":           [e.model_dump() for e in causal_chain],
+            "similar_past_incidents": [m.model_dump() for m in similar_past],
+            "suggested_remediations": [r.model_dump() for r in remediations],
             "confidence":             confidence,
             "explain":                explain,
         }

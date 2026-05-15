@@ -43,6 +43,11 @@ app.add_middleware(
 # Mount all API routes under /api/v1
 app.include_router(api_router, prefix="/api/v1")
 
+# Mount websocket at root so it listens on /ws/stream directly
+from app.api.routes import stream
+app.include_router(stream.router)
+
+
 
 @app.get("/")
 async def root():

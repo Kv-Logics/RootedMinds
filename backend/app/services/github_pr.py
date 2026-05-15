@@ -59,8 +59,10 @@ class GitHubPRService:
     """
 
     def __init__(self, token: Optional[str] = None, repo: Optional[str] = None):
-        self.token = token or os.getenv("GITHUB_TOKEN", "")
-        self.repo_name = repo or os.getenv("GITHUB_REPO", "")
+        from app.core.config import get_settings
+        settings = get_settings()
+        self.token = token or settings.github_token
+        self.repo_name = repo or settings.github_repo
         self._gh = None
         self._repo = None
 
@@ -74,6 +76,8 @@ class GitHubPRService:
         if self._gh is None:
             self._gh = Github(self.token)
             self._repo = self._gh.get_repo(self.repo_name)
+            self.default_branch = self._repo.default_branch
+            print(f"[OK] Connected to GitHub repo: {self.repo_name} (Default branch: {self.default_branch})")
 
     # ──────────────────────────────────────────────────────────────
     # Main entry point
@@ -108,8 +112,13 @@ class GitHubPRService:
             short_id = str(uuid.uuid4())[:6]
             branch_name = f"fix/engine-{incident_id.lower()}-{short_id}"
 
-            # 2. Get base branch SHA
-            base_ref = self._repo.get_branch(base_branch)
+            # 2. Get base branch ref (fallback to repo default if passed branch doesn't exist)
+            target_base = base_branch
+            try:
+                base_ref = self._repo.get_branch(target_base)
+            except GithubException:
+                target_base = self.default_branch
+                base_ref = self._repo.get_branch(target_base)
             base_sha  = base_ref.commit.sha
 
             # 3. Create new branch
@@ -131,7 +140,7 @@ class GitHubPRService:
                 f"Confidence: {context.get('confidence', 0):.2f}"
             )
             try:
-                existing = self._repo.get_contents(fix_file_path, ref=base_branch)
+                existing = self._repo.get_contents(fix_file_path, ref=target_base)
                 self._repo.update_file(
                     path=fix_file_path,
                     message=commit_msg,
@@ -160,7 +169,7 @@ class GitHubPRService:
                 title=pr_title,
                 body=pr_body,
                 head=branch_name,
-                base=base_branch,
+                base=target_base,
             )
 
             return PRResult(
@@ -173,7 +182,7 @@ class GitHubPRService:
         except GithubException as e:
             return PRResult(
                 success=False,
-                error=f"GitHub API error: {e.status} — {e.data.get('message', str(e))}",
+                error=f"GitHub API error: {e.status} — {e.data.get('message', str(e))} (Repo: {self.repo_name}, Branch: {target_base if 'target_base' in locals() else 'unknown'})",
             )
         except Exception as e:
             return PRResult(success=False, error=str(e))

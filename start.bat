@@ -12,7 +12,7 @@ start "Next.js Frontend" cmd /k "cd frontend && npm install --silent && npm run 
 
 echo.
 echo ╔══════════════════════════════════════╗
-echo ║  Frontend  →  http://localhost:3000  ║
+echo ║  Frontend  →  http://localhost:3001  ║
 echo ║  Backend   →  http://localhost:8000  ║
 echo ║  API Docs  →  http://localhost:8000/docs ║
 echo ╚══════════════════════════════════════╝
