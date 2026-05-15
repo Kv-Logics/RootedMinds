@@ -1,4 +1,5 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import Optional
 from functools import lru_cache
 
 
@@ -9,14 +10,15 @@ class Settings(BaseSettings):
     debug: bool = True
 
     # AI
-    gemini_api_key: str = ""
-    openai_api_key: str = ""
+    gemini_api_key: Optional[str] = None
+    openai_api_key: Optional[str] = None
 
     # Database
-    database_url: str = "postgresql+asyncpg://postgres.fvfohlmwutqdcvvgpabi:tharunpoorna@aws-1-ap-south-1.pooler.supabase.com:6543/postgres"
-    supabase_url: str = "https://fvfohlmwutqdcvvgpabi.supabase.co"
-    supabase_key: str = "sb_publishable_rz0QS4bXXlSClgE-DE7cEQ_3XffG3YS"
-    mongodb_url: str = "mongodb+srv://muruga:muruga99@muruga.n9rrdn0.mongodb.net/?appName=muruga"
+    database_url: str = "sqlite+aiosqlite:///./app.db"
+    supabase_url: Optional[str] = None
+    supabase_key: Optional[str] = None
+    mongodb_url: Optional[str] = None
+
     # CORS
     frontend_url: str = "http://localhost:3001"
 
@@ -24,16 +26,18 @@ class Settings(BaseSettings):
     secret_key: str = "change-this-in-production"
     
     # GitHub PR
-    github_token: str = ""
-    github_repo: str = ""
+    github_token: Optional[str] = None
+    github_repo: Optional[str] = None
     
     # Environment
     environment: str = "development"
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
-        extra = "ignore"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore"
+    )
 
 
 @lru_cache()
