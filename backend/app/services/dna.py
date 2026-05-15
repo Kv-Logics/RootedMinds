@@ -82,6 +82,35 @@ class DNAService:
         self.registry: Dict[str, np.ndarray] = {}          # service → DNA vector
         self.incident_snapshots: Dict[str, np.ndarray] = {}  # inc_id → DNA at time of incident
         self.incident_metadata: Dict[str, dict] = {}         # inc_id → context dict
+        self._load_memory()
+
+    def _save_memory(self):
+        """Persist incident snapshots to disk."""
+        import json
+        data = {
+            "snapshots": {k: v.tolist() for k, v in self.incident_snapshots.items()},
+            "metadata": self.incident_metadata
+        }
+        with open("sentinel_memory.json", "w") as f:
+            json.dump(data, f)
+
+    def _load_memory(self):
+        """Load incident snapshots from disk."""
+        import json
+        import os
+        if os.path.exists("sentinel_memory.json"):
+            try:
+                with open("sentinel_memory.json", "r") as f:
+                    data = json.load(f)
+                    self.incident_snapshots = {k: np.array(v) for k, v in data.get("snapshots", {}).items()}
+                    self.incident_metadata = data.get("metadata", {})
+                    # Rebuild registry keys so matches work
+                    for inc_id, meta in self.incident_metadata.items():
+                        svc_id = meta.get("service_id")
+                        if svc_id and svc_id not in self.registry:
+                            self.registry[svc_id] = self.incident_snapshots[inc_id]
+            except Exception as e:
+                print(f"[DNA] Could not load memory: {e}")
 
     # ──────────────────────────────────────────────────────────────
     # Ingestion
@@ -213,7 +242,9 @@ class DNAService:
         """Short 4-char hex fingerprint for display (e.g. 'f3a9')."""
         v = self.registry.get(service_id)
         if v is None:
-            return "0000"
+            # Fallback: stable hash of service name so it's not "0000"
+            digest = hashlib.md5(service_id.encode()).hexdigest()
+            return digest[:4]
         digest = hashlib.md5(v.tobytes()).hexdigest()
         return digest[:4]
 
@@ -234,6 +265,7 @@ class DNAService:
                 "fingerprint": self.get_fingerprint_id(service_id),
                 **metadata
             }
+            self._save_memory()
 
     def find_similar_incidents(
         self,

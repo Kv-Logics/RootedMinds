@@ -203,8 +203,9 @@ class GitHubPRService:
 
         Returns: (file_path, file_content_string)
         """
-        remediation = context.get("suggested_remediations", [{}])[0]
-        action  = remediation.get("action", "rollback") if remediation else "rollback"
+        remeds = context.get("suggested_remediations", [])
+        remediation = remeds[0] if remeds else {}
+        action  = remediation.get("action", "rollback")
         explain = context.get("explain", "")
         confidence = context.get("confidence", 0)
 

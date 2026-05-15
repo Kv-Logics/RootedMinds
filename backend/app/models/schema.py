@@ -57,3 +57,4 @@ class IncidentSignal(BaseModel):
     ts: str
     incident_id: str
     trigger: str
+    service: Optional[str] = None

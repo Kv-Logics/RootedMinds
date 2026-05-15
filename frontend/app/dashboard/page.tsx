@@ -119,7 +119,7 @@ export default function DashboardPage() {
         setActiveTab("incidents");
 
         // Fetch context in background
-        reconstructContext(event.incident_id, event.trigger ?? "", event.ts)
+        reconstructContext(event.incident_id, event.trigger ?? "", event.ts, event.service)
           .then((ctx) => {
             setIncidents((prev) =>
               prev.map((inc) =>

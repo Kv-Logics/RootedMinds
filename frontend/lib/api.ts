@@ -58,12 +58,13 @@ export async function reconstructContext(
   incident_id: string,
   trigger: string,
   ts: string,
+  service?: string,
   mode: "fast" | "deep" = "fast"
 ): Promise<Context> {
   const res = await fetch(`${BASE}/api/v1/reconstruct?mode=${mode}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ incident_id, trigger, ts }),
+    body: JSON.stringify({ incident_id, trigger, ts, service }),
   });
   return res.json();
 }

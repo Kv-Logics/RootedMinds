@@ -9,6 +9,28 @@ class GhostRegistry:
         self.lineage: Dict[str, str] = {}
         # Stores full mapping info
         self.mappings: Dict[str, Dict] = {}
+        self._load_memory()
+
+    def _save_memory(self):
+        import json
+        data = {
+            "lineage": self.lineage,
+            "mappings": self.mappings
+        }
+        with open("ghost_memory.json", "w") as f:
+            json.dump(data, f)
+
+    def _load_memory(self):
+        import json
+        import os
+        if os.path.exists("ghost_memory.json"):
+            try:
+                with open("ghost_memory.json", "r") as f:
+                    data = json.load(f)
+                    self.lineage = data.get("lineage", {})
+                    self.mappings = data.get("mappings", {})
+            except Exception:
+                pass
 
     def run_ghost_protocol(self, old_id: str, new_id: str) -> bool:
         """
@@ -46,6 +68,7 @@ class GhostRegistry:
             if self.graph_engine:
                 self.graph_engine.migrate_edges(old_id, new_id)
 
+            self._save_memory()
             return True
         return False
 
