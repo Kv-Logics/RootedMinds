@@ -7,7 +7,7 @@ settings = get_settings()
 START_TIME = time.time()
 
 
-@router.get("/health")
+@router.get("")
 async def health_check():
     return {
         "status": "healthy",
