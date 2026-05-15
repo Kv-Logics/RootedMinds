@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { AuthProvider } from "@/components/AuthProvider";
 
 export const metadata: Metadata = {
   title: "Anvil Hackathon | Build Something Great",
@@ -22,7 +23,9 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-[#131313] text-white antialiased font-sans selection:bg-sarvam-saffron/30">
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

@@ -1,5 +1,11 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowRight, Zap, Bot, Database, Shield } from "lucide-react";
+import { signInWithPopup } from "firebase/auth";
+import { auth, googleProvider } from "@/lib/firebase";
+import { useAuth } from "@/components/AuthProvider";
+import { useRouter } from "next/navigation";
 
 const FEATURES = [
   {
@@ -25,6 +31,18 @@ const FEATURES = [
 ];
 
 export default function HomePage() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  const handleSignIn = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+      router.push("/dashboard");
+    } catch (error) {
+      console.error("Sign in error", error);
+    }
+  };
+
   return (
     <main className="min-h-screen flex flex-col bg-[#131313] text-white">
       {/* Hero */}
@@ -51,9 +69,20 @@ export default function HomePage() {
 
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-5 w-full sm:w-auto">
-            <Link href="/dashboard" id="cta-dashboard" className="btn-primary w-full sm:w-auto">
-              Open Dashboard
-            </Link>
+            {loading ? (
+              <div className="btn-primary w-full sm:w-auto opacity-50 cursor-not-allowed">
+                Loading...
+              </div>
+            ) : user ? (
+              <Link href="/dashboard" id="cta-dashboard" className="btn-primary w-full sm:w-auto">
+                Go to Dashboard
+              </Link>
+            ) : (
+              <button onClick={handleSignIn} id="cta-signin" className="btn-primary w-full sm:w-auto">
+                Sign In with Google
+              </button>
+            )}
+            
             <a
               href="http://localhost:8000/docs"
               target="_blank"
