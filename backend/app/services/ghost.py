@@ -13,24 +13,45 @@ class GhostRegistry:
 
     def _save_memory(self):
         import json
+        from app.mongodb import mongo_db
         data = {
             "lineage": self.lineage,
             "mappings": self.mappings
         }
+        if mongo_db is not None:
+            try:
+                mongo_db.memory.replace_one({"_id": "ghost_state"}, data, upsert=True)
+                return
+            except Exception:
+                pass
+                
         with open("ghost_memory.json", "w") as f:
             json.dump(data, f)
 
     def _load_memory(self):
         import json
         import os
-        if os.path.exists("ghost_memory.json"):
+        from app.mongodb import mongo_db
+        data = None
+        
+        if mongo_db is not None:
+            try:
+                doc = mongo_db.memory.find_one({"_id": "ghost_state"})
+                if doc:
+                    data = doc
+            except Exception:
+                pass
+                
+        if data is None and os.path.exists("ghost_memory.json"):
             try:
                 with open("ghost_memory.json", "r") as f:
                     data = json.load(f)
-                    self.lineage = data.get("lineage", {})
-                    self.mappings = data.get("mappings", {})
             except Exception:
                 pass
+                    
+        if data:
+            self.lineage = data.get("lineage", {})
+            self.mappings = data.get("mappings", {})
 
     def run_ghost_protocol(self, old_id: str, new_id: str) -> bool:
         """

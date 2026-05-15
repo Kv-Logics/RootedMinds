@@ -87,10 +87,19 @@ class DNAService:
     def _save_memory(self):
         """Persist incident snapshots to disk."""
         import json
+        from app.mongodb import mongo_db
         data = {
             "snapshots": {k: v.tolist() for k, v in self.incident_snapshots.items()},
             "metadata": self.incident_metadata
         }
+        
+        if mongo_db is not None:
+            try:
+                mongo_db.memory.replace_one({"_id": "dna_state"}, data, upsert=True)
+                return
+            except Exception as e:
+                print(f"[DNA] MongoDB save failed, falling back to disk: {e}")
+                
         with open("sentinel_memory.json", "w") as f:
             json.dump(data, f)
 
@@ -98,19 +107,33 @@ class DNAService:
         """Load incident snapshots from disk."""
         import json
         import os
-        if os.path.exists("sentinel_memory.json"):
+        
+        from app.mongodb import mongo_db
+        data = None
+        
+        if mongo_db is not None:
+            try:
+                doc = mongo_db.memory.find_one({"_id": "dna_state"})
+                if doc:
+                    data = doc
+            except Exception as e:
+                print(f"[DNA] MongoDB load failed, falling back to disk: {e}")
+
+        if data is None and os.path.exists("sentinel_memory.json"):
             try:
                 with open("sentinel_memory.json", "r") as f:
                     data = json.load(f)
-                    self.incident_snapshots = {k: np.array(v) for k, v in data.get("snapshots", {}).items()}
-                    self.incident_metadata = data.get("metadata", {})
-                    # Rebuild registry keys so matches work
-                    for inc_id, meta in self.incident_metadata.items():
-                        svc_id = meta.get("service_id")
-                        if svc_id and svc_id not in self.registry:
-                            self.registry[svc_id] = self.incident_snapshots[inc_id]
             except Exception as e:
                 print(f"[DNA] Could not load memory: {e}")
+                
+        if data:
+            self.incident_snapshots = {k: np.array(v) for k, v in data.get("snapshots", {}).items()}
+            self.incident_metadata = data.get("metadata", {})
+            # Rebuild registry keys so matches work
+            for inc_id, meta in self.incident_metadata.items():
+                svc_id = meta.get("service_id")
+                if svc_id and svc_id not in self.registry:
+                    self.registry[svc_id] = self.incident_snapshots[inc_id]
 
     # ──────────────────────────────────────────────────────────────
     # Ingestion
@@ -345,4 +368,3 @@ class DNAService:
         if match:
             return match.group(1)
         return "unknown-service"
-

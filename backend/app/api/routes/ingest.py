@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from typing import List
+import asyncio
 from app.models.schema import Event
 from app.services.dna import DNAService
 from app.services.ghost import GhostRegistry
@@ -16,10 +17,14 @@ from app.api.routes.reconstruct import graph_engine
 
 @router.post("/ingest")
 async def ingest_events(events: List[Event], background_tasks: BackgroundTasks):
+    from app.mongodb import mongo_db
     try:
+        docs_to_insert = []
         for event in events:
             # Pydantic v2 .model_dump() or v1 .dict()
             ev_dict = event.model_dump() if hasattr(event, "model_dump") else event.dict()
+            
+            docs_to_insert.append(ev_dict)
             
             # 1. Identity identification
             service_id = ev_dict.get("service") or ev_dict.get("target")
@@ -54,6 +59,10 @@ async def ingest_events(events: List[Event], background_tasks: BackgroundTasks):
             
             # 6. Broadcast to UI
             await manager.broadcast(ev_dict)
+            
+        # 7. Persist to MongoDB asynchronously
+        if mongo_db is not None and docs_to_insert:
+            background_tasks.add_task(asyncio.to_thread, mongo_db.events.insert_many, docs_to_insert)
         
         return {"status": "ingested", "count": len(events)}
     except Exception as e:

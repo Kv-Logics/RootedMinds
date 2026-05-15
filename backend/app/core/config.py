@@ -13,8 +13,10 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
 
     # Database
-    database_url: str = "sqlite+aiosqlite:///./app.db"
-
+    database_url: str = "postgresql+asyncpg://postgres.fvfohlmwutqdcvvgpabi:tharunpoorna@aws-1-ap-south-1.pooler.supabase.com:6543/postgres"
+    supabase_url: str = "https://fvfohlmwutqdcvvgpabi.supabase.co"
+    supabase_key: str = "sb_publishable_rz0QS4bXXlSClgE-DE7cEQ_3XffG3YS"
+    mongodb_url: str = "mongodb+srv://muruga:muruga99@muruga.n9rrdn0.mongodb.net/?appName=muruga"
     # CORS
     frontend_url: str = "http://localhost:3001"
 
