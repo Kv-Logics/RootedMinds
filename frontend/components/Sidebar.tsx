@@ -3,23 +3,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
-  Bot,
-  Database,
-  Settings,
-  Zap,
+  Share2,
   ChevronRight,
-  Activity,
   LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/AuthProvider";
 
 const NAV_ITEMS = [
-  { label: "Dashboard",  href: "/dashboard",          icon: LayoutDashboard },
-  { label: "AI Console", href: "/dashboard/ai",        icon: Bot },
-  { label: "Data",       href: "/dashboard/data",      icon: Database },
-  { label: "Activity",   href: "/dashboard/activity",  icon: Activity },
-  { label: "Settings",   href: "/dashboard/settings",  icon: Settings },
+  { label: "Dashboard",      href: "/dashboard",        icon: LayoutDashboard },
+  { label: "Graph Analysis", href: "/dashboard/graph",  icon: Share2 },
 ];
 
 export default function Sidebar() {
@@ -32,7 +25,7 @@ export default function Sidebar() {
       <div className="p-5 border-b border-white/5">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sarvam-saffron to-sarvam-saffronDark flex items-center justify-center glow-brand">
-            <Zap className="w-4 h-4 text-black" />
+            <LayoutDashboard className="w-4 h-4 text-black" />
           </div>
           <div>
             <p className="text-sm font-bold text-white">Anvil</p>

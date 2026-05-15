@@ -1,26 +1,31 @@
-    from supabase import create_client
+from supabase import create_client
+import os
+from dotenv import load_dotenv
 
-    # Your Supabase project URL
-    url = "https://fvfohlmwutqdcvvgpabi.supabase.co"
+load_dotenv("backend/.env")
 
-    # Your service role key OR anon key
-    key = "sb_publishable_rz0QS4bXXlSClgE-DE7cEQ_3XffG3YS"
+url = os.getenv("SUPABASE_URL")
+key = os.getenv("SUPABASE_KEY")
 
+if not url or not key:
+    print("Error: SUPABASE_URL or SUPABASE_KEY not found in .env")
+else:
     # Create client
     supabase = create_client(url, key)
 
     # Insert data
     data = {
-        "message": "hello sentinel"
+        "message": "hello sentinel from python script"
     }
 
-    insert_res = supabase.table("test").insert(data).execute()
+    try:
+        insert_res = supabase.table("test").insert(data).execute()
+        print("Inserted:")
+        print(insert_res.data)
 
-    print("Inserted:")
-    print(insert_res.data)
-
-    # Read data
-    select_res = supabase.table("test").select("*").execute()
-
-    print("\nAll Rows:")
-    print(select_res.data)
+        # Read data
+        select_res = supabase.table("test").select("*").execute()
+        print("\nAll Rows:")
+        print(select_res.data)
+    except Exception as e:
+        print(f"Error: {e}")

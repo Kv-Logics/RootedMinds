@@ -6,24 +6,12 @@ import { IncidentCard } from "@/components/IncidentCard";
 import { sentinelWS, type WSEvent } from "@/lib/websocket";
 import { reconstructContext, type Context } from "@/lib/api";
 
+import { useDashboardStore } from "@/lib/store";
+
 // ── Types ─────────────────────────────────────────────────────────
 
-type Incident = {
-  id: string;
-  trigger: string;
-  ts: string;
-  context: Context | null;
-  loading: boolean;
-  resolved: boolean;
-};
-
-type Stats = {
-  events: number;
-  services: number;
-  ghosts: number;
-  incidents: number;
-  dnaMatches: number;
-};
+// Types are now in lib/store.ts, but we keep the local helper types if needed
+// Actually, we don't need them redefined here since we use the store.
 
 // ── Stat Card ────────────────────────────────────────────────────
 
@@ -66,7 +54,7 @@ function EventRow({ event }: { event: WSEvent }) {
     <div className={`border rounded-lg px-3 py-2 flex items-start gap-3 ${color}`}>
       <span className={`text-[9px] font-bold tracking-widest mt-0.5 w-16 shrink-0 ${labelColor}`}>{label}</span>
       <div className="flex-1 min-w-0">
-        <p className="text-xs text-gray-300 truncate">{event.service || event.target || "—"}</p>
+        <p className="text-xs text-gray-300 truncate">{String(event.service || event.target || "—")}</p>
         <p className="text-[11px] text-gray-500 truncate mt-0.5">{desc}</p>
       </div>
       <span className="text-[9px] text-gray-700 font-mono shrink-0">
@@ -79,70 +67,50 @@ function EventRow({ event }: { event: WSEvent }) {
 // ── Main Dashboard ────────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const [events, setEvents] = useState<WSEvent[]>([]);
-  const [incidents, setIncidents] = useState<Incident[]>([]);
-  const [stats, setStats] = useState<Stats>({ events: 0, services: 0, ghosts: 0, incidents: 0, dnaMatches: 0 });
-  const [activeTab, setActiveTab] = useState<"ops" | "incidents">("ops");
+  const {
+    events, incidents, stats, activeTab,
+    addEvent, addIncident, updateIncident, resolveIncident, setActiveTab,
+    isSubscribed, setSubscribed
+  } = useDashboardStore();
 
   // ── WebSocket subscription ──────────────────────────────────────
   useEffect(() => {
+    if (isSubscribed) return;
+    
     sentinelWS.connect();
+    setSubscribed(true);
 
     const unsub = sentinelWS.subscribe((event) => {
-      // Update live event stream
-      setEvents((prev) => [event, ...prev.slice(0, 99)]);
-
-      // Update stats
-      setStats((s) => ({
-        ...s,
-        events: s.events + 1,
-        services: event.service ? Math.max(s.services, s.services + (Math.random() > 0.9 ? 1 : 0)) : s.services,
-        ghosts: event.kind === "ghost" || (event.kind === "topology" && event.change === "rename") ? s.ghosts + 1 : s.ghosts,
-        incidents: event.kind === "incident_signal" ? s.incidents + 1 : s.incidents,
-        dnaMatches: event.kind === "dna_update" ? s.dnaMatches + 1 : s.dnaMatches,
-      }));
+      // Global state updates
+      addEvent(event);
 
       // Auto-reconstruct on incident
       if (event.kind === "incident_signal" && event.incident_id) {
-        const newInc: Incident = {
+        addIncident({
           id: event.incident_id,
           trigger: event.trigger ?? "",
           ts: event.ts,
           context: null,
           loading: true,
           resolved: false,
-        };
-        setIncidents((prev) => {
-          const filtered = prev.filter((inc) => inc.id !== event.incident_id);
-          return [newInc, ...filtered];
         });
-        setActiveTab("incidents");
 
         // Fetch context in background
         reconstructContext(event.incident_id, event.trigger ?? "", event.ts, event.service)
           .then((ctx) => {
-            setIncidents((prev) =>
-              prev.map((inc) =>
-                inc.id === event.incident_id ? { ...inc, context: ctx, loading: false } : inc
-              )
-            );
+            updateIncident(event.incident_id as string, { context: ctx, loading: false });
           })
           .catch(() => {
-            setIncidents((prev) =>
-              prev.map((inc) =>
-                inc.id === event.incident_id ? { ...inc, loading: false } : inc
-              )
-            );
+            updateIncident(event.incident_id as string, { loading: false });
           });
       }
     });
 
-    return () => unsub();
-  }, []);
-
-  const resolveIncident = useCallback((id: string) => {
-    setIncidents((prev) => prev.map((inc) => inc.id === id ? { ...inc, resolved: true } : inc));
-  }, []);
+    return () => {
+      // Don't unsubscribe on unmount! That's the whole point of making it persistent.
+      // The socket stays alive globally and populates the store even if we leave the page.
+    };
+  }, [isSubscribed, addEvent, addIncident, updateIncident, setSubscribed]);
 
   const activeIncidents = incidents.filter((i) => !i.resolved);
 
@@ -226,9 +194,8 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* ── Incidents Tab ─────────────────────────────────────── */}
         {activeTab === "incidents" && (
-          <div className="space-y-6 max-w-4xl">
+          <div className="space-y-6 w-full">
             {incidents.length === 0 && (
               <div className="text-center text-gray-700 py-20">
                 <AlertTriangle size={40} className="mx-auto mb-4 opacity-20" />

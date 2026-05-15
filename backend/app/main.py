@@ -13,6 +13,16 @@ async def lifespan(app: FastAPI):
     # Startup
     await init_db()
     print(f"[OK] {settings.app_name} v{settings.app_version} started")
+    
+    # Auto-start ShopFlow dummy simulation in the background
+    import asyncio
+    try:
+        from demo_seed import run as start_shopflow_sim
+        print("[OK] Starting ShopFlow auto-connection sequence...")
+        asyncio.create_task(start_shopflow_sim())
+    except ImportError:
+        print("[WARN] ShopFlow simulator (demo_seed.py) not found")
+
     yield
     # Shutdown
     print("[BYE] Shutting down...")

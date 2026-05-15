@@ -13,7 +13,7 @@ else:
         echo=settings.debug,
         pool_size=5,
         max_overflow=10,
-        connect_args={"statement_cache_size": 0}
+        pool_pre_ping=True
     )
     
 AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)

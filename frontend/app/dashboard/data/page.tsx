@@ -1,7 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Plus, Trash2, Database, Loader2 } from "lucide-react";
-import { api, type Item } from "@/lib/api";
+import { api } from "@/lib/api";
+
+type Item = { id: number; title: string; description?: string; status: string; };
 
 export default function DataPage() {
   const [items, setItems] = useState<Item[]>([]);
