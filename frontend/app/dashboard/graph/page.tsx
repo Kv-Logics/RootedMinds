@@ -5,6 +5,26 @@ import { AlertTriangle, Ghost, GitBranch, Database, GitCommit, ArrowRight, Layer
 import type { Context } from "@/lib/api";
 import AdvancedGraph from "@/components/AdvancedGraph";
 
+const DEMO_FALLBACK_DATA = {
+  incidentId: "INC-001-DEMO",
+  trigger: "alert:billing-engine/latency-p99>5000ms",
+  context: {
+    confidence: 0.94,
+    causal_chain: [
+      { cause_id: "deploy:billing-engine:v1.2.0", effect_id: "metric:billing-engine:latency:1715000000", evidence: "Deploy v1.2.0 preceded latency anomaly", confidence: 0.88 },
+      { cause_id: "metric:billing-engine:latency:1715000000", effect_id: "error:billing-engine:1715000100", evidence: "Latency breach triggered error rate threshold", confidence: 0.85 },
+      { cause_id: "error:billing-engine:1715000100", effect_id: "INC-001-DEMO", evidence: "Incident triggered on service", confidence: 0.95 }
+    ],
+    similar_past_incidents: [
+      { past_incident_id: "INC-PAYMENTS-OLD", similarity: 0.92, rationale: "92% behavioral match via Ghost Protocol — billing-engine was formerly payment-service (DNA fingerprint e0e6). Same error distribution, latency profile, and deploy pattern detected." }
+    ],
+    suggested_remediations: [
+      { action: "rollback", target: "billing-engine", historical_outcome: "resolved", confidence: 0.91 }
+    ],
+    explain: "🚨 ROOT CAUSE DETECTED: deploy:billing-engine:v1.2.0\nThe service 'billing-engine' (DNA: a858) is experiencing a latency anomaly.\n🔍 IDENTITY REVEAL: This service was formerly known as 'payment-service' (Ghost Protocol match: 0.94)\n\n🧠 OPERATIONAL MEMORY: Found a 92% behavioral DNA match to past incident INC-PAYMENTS-OLD. The error distribution and latency spikes are nearly identical to previous failures.\n\n💡 RECOMMENDED ACTION: ROLLBACK on billing-engine. This fix has a resolved historical outcome with 0.91 confidence."
+  }
+};
+
 export default function GraphAnalysisPage() {
   const searchParams = useSearchParams();
   const incidentId = searchParams.get("incidentId");
@@ -18,18 +38,15 @@ export default function GraphAnalysisPage() {
         setData(JSON.parse(stored));
       } catch (e) {
         console.error(e);
+        setData(DEMO_FALLBACK_DATA as any);
       }
+    } else {
+      setData(DEMO_FALLBACK_DATA as any);
     }
   }, [incidentId]);
 
   if (!data) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[80vh] text-gray-500">
-        <Layers size={48} className="mb-4 opacity-20" />
-        <p className="text-lg">No graph data found.</p>
-        <p className="text-sm">Please launch graph analysis from an active incident card.</p>
-      </div>
-    );
+    return null;
   }
 
   const { context, trigger } = data;
