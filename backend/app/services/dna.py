@@ -77,12 +77,14 @@ class DNAService:
         compute_incident_vector(signal)     → compute signal's DNA inline
     """
 
-    def __init__(self):
+    def __init__(self, persist: bool = True):
+        self.persist = persist
         self.stats: Dict[str, ServiceStats] = {}
         self.registry: Dict[str, np.ndarray] = {}          # service → DNA vector
         self.incident_snapshots: Dict[str, np.ndarray] = {}  # inc_id → DNA at time of incident
         self.incident_metadata: Dict[str, dict] = {}         # inc_id → context dict
-        self._load_memory()
+        if self.persist:
+            self._load_memory()
 
     def _save_memory(self):
         """Persist incident snapshots to disk."""
@@ -288,7 +290,8 @@ class DNAService:
                 "fingerprint": self.get_fingerprint_id(service_id),
                 **metadata
             }
-            self._save_memory()
+            if self.persist:
+                self._save_memory()
 
     def find_similar_incidents(
         self,

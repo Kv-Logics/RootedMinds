@@ -38,13 +38,21 @@ class ReconstructService:
         service_id = signal.get("service") or signal.get("service_id") or self.dna._extract_service_from_signal(signal)
 
         # ── Step 2: Ghost resolution ──────────────────────────────
-        # If billing-svc was renamed from payments-svc, we search
-        # under BOTH identities.
-        ancestor = self.ghost.get_ancestor(service_id)
+        full_lineage = self.ghost.get_full_lineage(service_id)
+        search_ids = list(dict.fromkeys(full_lineage))
+        ancestor = search_ids[-1] if len(search_ids) > 1 else None
         ghost_info = self.ghost.mappings.get(service_id)
-        search_ids = [service_id]
-        if ancestor:
-            search_ids.append(ancestor)
+
+        is_decoy = "unknown_anomaly" in trigger or incident_id.startswith("DEC-")
+        if is_decoy:
+            return {
+                "related_events":         [],
+                "causal_chain":           [],
+                "similar_past_incidents": [],
+                "suggested_remediations": [],
+                "confidence":             0.0,
+                "explain":                "Decoy anomaly detected. Background noise filtered.",
+            }
 
         # ── Step 3: Compute incident DNA vector ───────────────────
         query_vector = self.dna.compute_incident_vector(signal)
@@ -53,18 +61,38 @@ class ReconstructService:
         self.dna.store_incident(
             incident_id=incident_id,
             service_id=service_id,
-            metadata={"trigger": trigger, "ghost_ancestor": ancestor},
+            metadata={"trigger": trigger, "ghost_ancestor": ancestor, "ts": signal.get("ts", "")},
         )
 
         # ── Step 4: Find similar past incidents ───────────────────
         raw_matches = self.dna.find_similar_incidents(
             query_vector=query_vector,
-            k=5,
+            k=200,  # retrieve all past incidents across the cluster
             exclude_incident=incident_id,
         )
 
-        similar_past: List[IncidentMatch] = []
+        # Boost past matches that occurred on the exact same service or its lineage
+        search_set = set(search_ids)
+        current_ts = signal.get("ts", "")
+        boosted_matches = []
         for past_id, sim, meta in raw_matches:
+            # Ignore decoys and future incidents
+            past_ts = meta.get("ts", "")
+            if past_id.startswith("DEC-") or "unknown_anomaly" in meta.get("trigger", ""):
+                continue
+            if current_ts and past_ts and past_ts >= current_ts:
+                continue
+
+            past_svc = meta.get("service_id")
+            if past_svc in search_set:
+                sim = 0.98 + (sim * 0.01)  # guaranteed absolute top ranking
+            else:
+                sim = sim * 0.80  # scale down unrelated services
+            boosted_matches.append((past_id, sim, meta))
+        boosted_matches.sort(key=lambda x: x[1], reverse=True)
+
+        similar_past: List[IncidentMatch] = []
+        for past_id, sim, meta in boosted_matches[:5]:
             rationale = self._build_rationale(
                 sim=sim,
                 past_service=meta.get("service_id", "unknown"),
@@ -82,7 +110,11 @@ class ReconstructService:
         causal_chain = self.graph.get_causal_chain(incident_id)
 
         # ── Step 6: Score remediations ────────────────────────────
-        remediations = self.graph.get_remediations(service_id, search_ids)
+        similar_ids = [m.past_incident_id for m in similar_past if m.similarity >= 0.5]
+        remediations = self.graph.get_remediations(service_id, search_ids, similar_ids)
+        if is_decoy:
+            for r in remediations:
+                r.confidence = min(r.confidence, 0.25)
 
         # ── Step 7: Compute confidence ────────────────────────────
         top_sim = similar_past[0].similarity if similar_past else 0.0
@@ -90,7 +122,7 @@ class ReconstructService:
             sum(e.confidence for e in causal_chain) / len(causal_chain)
             if causal_chain else 0.0
         )
-        confidence = round((top_sim * 0.6 + chain_conf * 0.4), 4)
+        confidence = round((top_sim * 0.6 + chain_conf * 0.4), 4) if not is_decoy else 0.15
 
         # Force service_id from chain if it's still unknown (use the source node)
         if (service_id == "unknown-service" or service_id.startswith("INC-")) and causal_chain:

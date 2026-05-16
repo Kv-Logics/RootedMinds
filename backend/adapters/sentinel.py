@@ -33,7 +33,10 @@ from typing import Iterable, Any
 
 # ── Path setup — works whether run from repo root or adapters/ dir ──
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_BACKEND = os.path.dirname(_HERE)
+_BACKEND = os.path.abspath(os.path.join(_HERE, ".."))
+if not os.path.exists(os.path.join(_BACKEND, "app")):
+    # Fallback if copied into external Anvil-P-E/bench-p02-context/adapters/
+    _BACKEND = os.path.abspath(os.path.join(_HERE, "..", "..", "..", "backend"))
 if _BACKEND not in sys.path:
     sys.path.insert(0, _BACKEND)
 
@@ -58,9 +61,9 @@ class SentinelEngine:
         self._start = time.monotonic()
 
         # Core services — all in-memory, no external dependencies
-        self.dna     = DNAService()
+        self.dna     = DNAService(persist=False)
         self.graph   = CausalGraphEngine()
-        self.ghost   = GhostRegistry(self.dna, self.graph)
+        self.ghost   = GhostRegistry(self.dna, self.graph, persist=False)
         self.engine  = ReconstructService(self.dna, self.graph, self.ghost)
 
         cold_ms = round((time.monotonic() - self._start) * 1000, 1)
@@ -102,7 +105,7 @@ class SentinelEngine:
 
             # 4. Ghost Protocol — handle topology renames
             if kind == "topology" and event.get("change") == "rename":
-                old = event.get("from") or event.get("from_service")
+                old = event.get("from") or event.get("from_") or event.get("from_service")
                 new = event.get("to")   or event.get("to_service")
                 if old and new:
                     self.ghost.run_ghost_protocol(old, new)

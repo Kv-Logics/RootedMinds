@@ -178,33 +178,41 @@ class CausalGraphEngine:
         return chain
 
     def get_remediations(
-        self, service_id: str, search_ids: List[str]
+        self, service_id: str, search_ids: List[str], similar_incident_ids: Optional[List[str]] = None
     ) -> List[Remediation]:
         """
         Find historically successful remediations for a service.
         Searches across all IDs in search_ids (handles Ghost renamed services).
-        Orders by confidence = success_rate × recency_decay.
+        Boosts remediations that successfully resolved the top similar past incidents.
+        Orders by confidence and deduplicates distinct actions.
         """
-        results = []
+        best_per_action = {}
         now = _now_ts()
+        similar_set = set(similar_incident_ids or [])
 
         for r in self._remediations:
             if r["service_id"] not in search_ids:
                 continue
-            # Compute recency decay
-            age_days = (now - r["ts"]) / 86400.0
+            age_days = max(0.0, (now - r["ts"]) / 86400.0)
             decay = DECAY_PER_DAY ** age_days
             base_conf = 0.9 if r["outcome"] == "resolved" else 0.2
+
+            # Massive boost if this remediation successfully resolved a top similar past incident
+            if r.get("incident_id") in similar_set and r["outcome"] == "resolved":
+                base_conf = 0.98
+                decay = 1.0  # specific behavioral match overrides time decay
+
             confidence = round(base_conf * decay, 4)
+            action = r["action"]
+            if action not in best_per_action or confidence > best_per_action[action].confidence:
+                best_per_action[action] = Remediation(
+                    action=action,
+                    target=r["service_id"],
+                    historical_outcome=r["outcome"],
+                    confidence=confidence,
+                )
 
-            results.append(Remediation(
-                action=r["action"],
-                target=r["service_id"],
-                historical_outcome=r["outcome"],
-                confidence=confidence,
-            ))
-
-        # Sort best confidence first
+        results = list(best_per_action.values())
         results.sort(key=lambda x: x.confidence, reverse=True)
         return results[:3]
 

@@ -34,10 +34,21 @@ class CausalEdge(BaseModel):
     evidence: str
     confidence: float
 
+    def model_dump(self, **kwargs) -> Dict[str, Any]:
+        d = super().model_dump(**kwargs)
+        d["cause_event_id"] = self.cause_id
+        d["effect_event_id"] = self.effect_id
+        return d
+
 class IncidentMatch(BaseModel):
     past_incident_id: str
     similarity: float
     rationale: str
+
+    def model_dump(self, **kwargs) -> Dict[str, Any]:
+        d = super().model_dump(**kwargs)
+        d["incident_id"] = self.past_incident_id
+        return d
 
 class Remediation(BaseModel):
     action: str

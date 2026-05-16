@@ -2,14 +2,16 @@ from typing import Dict, Optional
 from .dna import DNAService
 
 class GhostRegistry:
-    def __init__(self, dna_service: DNAService, graph_engine=None):
+    def __init__(self, dna_service: DNAService, graph_engine=None, persist: bool = True):
+        self.persist = persist
         self.dna_service = dna_service
         self.graph_engine = graph_engine  # injected to migrate edges
         # Maps new_service_id -> old_service_id
         self.lineage: Dict[str, str] = {}
         # Stores full mapping info
         self.mappings: Dict[str, Dict] = {}
-        self._load_memory()
+        if self.persist:
+            self._load_memory()
 
     def _save_memory(self):
         import json
@@ -85,11 +87,18 @@ class GhostRegistry:
                 "status": status,
             }
 
+            # Inherit DNA stats and vector seamlessly across renames
+            if old_id in self.dna_service.stats:
+                self.dna_service.stats[new_id] = self.dna_service.stats[old_id]
+            if old_id in self.dna_service.registry:
+                self.dna_service.registry[new_id] = self.dna_service.registry[old_id]
+
             # Migrate causal graph edges
             if self.graph_engine:
                 self.graph_engine.migrate_edges(old_id, new_id)
 
-            self._save_memory()
+            if self.persist:
+                self._save_memory()
             return True
         return False
 
