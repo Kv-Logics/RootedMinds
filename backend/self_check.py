@@ -19,6 +19,10 @@ Tests:
 """
 
 import sys, os, time, json
+try:
+    sys.stdout.reconfigure(encoding='utf-8')
+except Exception:
+    pass
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from datetime import datetime, timezone, timedelta
